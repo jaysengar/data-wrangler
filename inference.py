@@ -282,7 +282,7 @@ def run_task(task_id: str) -> float:
 
 
 # ─── Main ──────────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
+def main():
     print("\n" + "═"*60)
     print("  DataWrangler — Official Inference Script")
     print(f"  Model   : {MODEL_NAME}")
@@ -308,3 +308,6 @@ if __name__ == "__main__":
     print("═"*60)
     print(f"  Overall: {'✅ All scores valid!' if all_valid else '❌ Some scores out of range!'}")
     print("  Inference complete.")
+
+if __name__ == "__main__":
+    main()

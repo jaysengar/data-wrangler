@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "data_wrangler"
+version = "1.0.0"
+description = "An AutoML agent environment for cleaning raw datasets to maximize model accuracy."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "jaysengar" }
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2.0.0",
+    "openai>=1.0.0",
+    "pandas",
+    "openpyxl",
+    "python-multipart",
+    "python-dotenv",
+    "scikit-learn"
+]
+
+[project.scripts]
+inference = "inference:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["*"]
