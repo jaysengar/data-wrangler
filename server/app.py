@@ -160,6 +160,6 @@ def run_baseline_endpoint():
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}\n\nTraceback:\n{tb}")
 
 
-def serve():
+def main():
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=7860, reload=False)
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860, reload=False)
