@@ -20,11 +20,13 @@ dependencies = [
     "openpyxl",
     "python-multipart",
     "python-dotenv",
-    "scikit-learn"
+    "scikit-learn",
+    "openenv-core>=0.2.0"
 ]
 
 [project.scripts]
 inference = "inference:main"
+server = "app:serve"
 
 [tool.setuptools.packages.find]
 where = ["."]
