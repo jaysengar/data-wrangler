@@ -1,5 +1,5 @@
 """
-inference.py — DataWrangler Agent Inference Script
+Inference.py — DataWrangler Agent Inference Script
 ===================================================
 Official submission entry point for the hackathon.
 
