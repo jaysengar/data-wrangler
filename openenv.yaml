@@ -1,0 +1,50 @@
+name: "DataWrangler-v1"
+version: "1.0.0"
+description: "An AutoML agent environment for cleaning raw datasets to maximize model accuracy."
+entrypoint: "env:DataWranglerEnv"
+
+dependencies:
+  - pydantic>=2.0.0
+  - openai>=1.0.0
+  - fastapi
+  - uvicorn
+  - pandas
+  - openpyxl
+  - python-multipart
+
+endpoints:
+  reset:
+    path: /reset
+    methods: [GET, POST]
+    response_model: Observation
+  state:
+    path: /state
+    methods: [GET]
+    response_model: Observation
+  step:
+    path: /step
+    methods: [POST]
+    request_model: Action
+    response_model: StepResponse
+
+schemas:
+  observation: "models:Observation"
+  action: "models:Action"
+  reward: "models:Reward"
+
+tasks:
+  - id: easy
+    description: "Drop a completely empty column and train."
+    grader: "tasks:grader_easy"
+  - id: medium
+    description: "Fill missing numeric values and train."
+    grader: "tasks:grader_medium"
+  - id: hard
+    description: "Clean a messy dataset with mixed types and missing data before training."
+    grader: "tasks:grader_hard"
+
+environment:
+  required_vars:
+    - API_BASE_URL
+    - MODEL_NAME
+    - HF_TOKEN
