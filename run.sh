@@ -26,8 +26,8 @@ fi
 
 case "${1:-inference}" in
     inference)
-        echo "🚀 Running Inference.py..."
-        "$PYTHON" Inference.py
+        echo "🚀 Running inference.py..."
+        "$PYTHON" inference.py
         ;;
     server)
         echo "🌐 Starting FastAPI server on http://localhost:7860 ..."

@@ -30,7 +30,7 @@ export MODEL_NAME="llama-3.1-8b-instant"
 export HF_TOKEN="your_api_key_here"
 
 # Run the inference script
-python Inference.py
+python inference.py
 
 # Or start the API server
 uvicorn app:app --host 0.0.0.0 --port 7860
@@ -81,7 +81,7 @@ docker run -p 7860:7860 \
 
 ```
 data_wrangler_env/
-├── Inference.py      # ✅ Official inference script (submission entry point)
+├── inference.py      # ✅ Official inference script (submission entry point)
 ├── app.py            # FastAPI server (OpenEnv endpoints)
 ├── env.py            # DataWranglerEnv logic
 ├── models.py         # Pydantic typed models
