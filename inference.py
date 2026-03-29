@@ -35,7 +35,12 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 # Detect placeholder token
 IS_PLACEHOLDER = HF_TOKEN == "" or not HF_TOKEN
 
-# (Warning moved to inside main)
+if IS_PLACEHOLDER:
+    print("\n" + "!"*60)
+    print("  ⚠️ WARNING: HF_TOKEN is not configured in your .env file!")
+    print("  The DataWrangler agent will switch to Heuristic Mode.")
+    print("  To use the LLM, please add your HuggingFace READ token.")
+    print("!"*60 + "\n")
 
 client = OpenAI(
     api_key=HF_TOKEN if not IS_PLACEHOLDER else "unused",
