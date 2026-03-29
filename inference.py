@@ -35,7 +35,12 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 # Detect placeholder token
 IS_PLACEHOLDER = HF_TOKEN == "" or not HF_TOKEN
 
-# (Warning moved to inside main)
+if IS_PLACEHOLDER:
+    print("\n" + "!"*60)
+    print("  ⚠️ WARNING: HF_TOKEN is not configured in your .env file!")
+    print("  The DataWrangler agent will switch to Heuristic Mode.")
+    print("  To use the LLM, please add your HuggingFace READ token.")
+    print("!"*60 + "\n")
 
 client = OpenAI(
     api_key=HF_TOKEN if not IS_PLACEHOLDER else "unused",
@@ -283,14 +288,14 @@ Respond with ONLY this JSON format:
                     print(f"Rate limit hit. Waiting 2s... (Attempt {attempt+1}/3)", file=sys.stderr)
                     time.sleep(2)
                 else:
-                    print(f"LLM error ({type(e).__name__}). Retrying... (Attempt {attempt+1}/3)", file=sys.stderr)
+                    print(f"  ⚠️ LLM error ({type(e).__name__}). Retrying... (Attempt {attempt+1}/3)", file=sys.stderr)
                     # Show more detail for first error
                     if attempt == 0:
-                        print(f"Details: {str(e)[:100]}...", file=sys.stderr)
+                        print(f"     Details: {str(e)[:100]}...", file=sys.stderr)
                     time.sleep(1)
 
         if action is None:
-            print("Model unavailable (or failed) — using HEURISTIC fallback logic", file=sys.stderr)
+            print("  🧠 Model unavailable (or failed) — using HEURISTIC fallback logic", file=sys.stderr)
             action = get_heuristic_action(obs)
 
         obs, reward, done, info = env.step(action)
