@@ -18,15 +18,15 @@ An **AutoML agent environment** where an AI agent learns to clean messy datasets
 
 | Variable | Description |
 |---|---|
-| `API_BASE_URL` | The API endpoint for the LLM (e.g. `https://api.groq.com/openai/v1`) |
-| `MODEL_NAME` | The model identifier (e.g. `llama-3.1-8b-instant`) |
+| `API_BASE_URL` | The API endpoint for the LLM (e.g. `https://router.huggingface.co/v1/`) |
+| `MODEL_NAME` | The model identifier (e.g. `your model name`) |
 | `HF_TOKEN` | Your Hugging Face / LLM API key |
 
 ### Running Locally
 
 ```bash
-export API_BASE_URL="https://api.groq.com/openai/v1"
-export MODEL_NAME="llama-3.1-8b-instant"
+export API_BASE_URL="https://router.huggingface.co/v1/"
+export MODEL_NAME="your model name"
 export HF_TOKEN="your_api_key_here"
 
 # Run the inference script
@@ -41,8 +41,8 @@ uvicorn app:app --host 0.0.0.0 --port 7860
 ```bash
 docker build -t datawrangler .
 docker run -p 7860:7860 \
-  -e API_BASE_URL="https://api.groq.com/openai/v1" \
-  -e MODEL_NAME="llama-3.1-8b-instant" \
+  -e API_BASE_URL="https://router.huggingface.co/v1/" \
+  -e MODEL_NAME="your model name" \
   -e HF_TOKEN="your_api_key_here" \
   datawrangler
 ```
