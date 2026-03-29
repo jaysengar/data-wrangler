@@ -31,10 +31,11 @@ case "${1:-inference}" in
         ;;
     server)
         echo "🌐 Starting FastAPI server on http://localhost:7860 ..."
+        export PYTHONPATH=$PYTHONPATH:.
         if [ -f .env ]; then
-            "$VENV_DIR/bin/uvicorn" app:app --host 0.0.0.0 --port 7860 --env-file .env --reload
+            "$VENV_DIR/bin/uvicorn" server.app:app --host 0.0.0.0 --port 7860 --env-file .env --reload
         else
-            "$VENV_DIR/bin/uvicorn" app:app --host 0.0.0.0 --port 7860 --reload
+            "$VENV_DIR/bin/uvicorn" server.app:app --host 0.0.0.0 --port 7860 --reload
         fi
         ;;
     install)

@@ -8,11 +8,55 @@ from models import Action
 from data_loader import load_task_state
 from tasks import grader_easy, grader_medium, grader_hard
 
-# Use the required submission environment variables
+# ─── Configuration & Client ───────-─────────────────────────────────────────────
+HF_TOKEN = os.environ.get("HF_TOKEN")
+API_BASE_URL = os.environ.get("API_BASE_URL")
+MODEL_NAME = os.environ.get("MODEL_NAME")
+
+# Detect placeholder token
+IS_PLACEHOLDER = HF_TOKEN == "" or not HF_TOKEN
+
+if IS_PLACEHOLDER:
+    print("\n" + "!"*60)
+    print("  ⚠️ WARNING: HF_TOKEN is not configured in your .env file!")
+    print("  The DataWrangler agent will switch to Heuristic Mode.")
+    print("  To use the LLM, please add your HuggingFace READ token.")
+    print("!"*60 + "\n")
+
 client = OpenAI(
-    api_key=os.environ.get("HF_TOKEN"),
-    base_url=os.environ.get("API_BASE_URL", "https://api.groq.com/openai/v1"),
+    api_key=HF_TOKEN if not IS_PLACEHOLDER else "unused",
+    base_url=API_BASE_URL,
 )
+
+
+def get_heuristic_action(obs) -> Action:
+    """Fallback logic: selects the best cleaning action based on dataset state."""
+    cols = obs.columns
+    threshold = int(obs.total_rows * 0.9)
+
+    # 1. Drop columns with mostly missing values
+    for col, info in cols.items():
+        if info.get("missing_values", 0) >= threshold:
+            return Action(command="drop_column", target_column=col)
+
+    # 2. Fill missing values (Prioritize Median for outliers)
+    for col, info in cols.items():
+        missing = info.get("missing_values", 0)
+        if missing > 0:
+            if info.get("type") == "numeric":
+                if info.get("has_outliers"):
+                    return Action(command="fill_median", target_column=col)
+                return Action(command="fill_mean", target_column=col)
+            else:
+                return Action(command="fill_mode", target_column=col)
+
+    # 3. Clip outliers
+    for col, info in cols.items():
+        if info.get("type") == "numeric" and info.get("has_outliers"):
+            return Action(command="clip_outliers", target_column=col)
+
+    # 4. Default to training
+    return Action(command="train_model", target_column=None)
 
 
 def extract_json(text: str) -> dict:
@@ -93,8 +137,11 @@ Respond with ONLY JSON: {{"reasoning": "why", "command": "<ONE OF THE VALID COMM
         action = None
         for attempt in range(3):
             try:
+                if IS_PLACEHOLDER:
+                    raise ValueError("HF_TOKEN is a placeholder — skipping LLM call.")
+
                 response = client.chat.completions.create(
-                    model=os.environ.get("MODEL_NAME", "llama-3.1-8b-instant"),
+                    model=MODEL_NAME,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
                     max_tokens=200
@@ -158,12 +205,15 @@ Respond with ONLY JSON: {{"reasoning": "why", "command": "<ONE OF THE VALID COMM
                     print(f"  ⚠️ Rate limit. Waiting 2s... ({attempt+1}/3)")
                     time.sleep(2)
                 else:
-                    print(f"  ⚠️ LLM err. Retrying... ({attempt+1}/3)")
+                    print(f"  ⚠️ LLM error ({type(e).__name__}). Retrying... ({attempt+1}/3)")
+                    # Show more detail for first error
+                    if attempt == 0:
+                        print(f"     Details: {str(e)[:100]}...")
                     time.sleep(1)
         
         if action is None:
-            print(f"  ❌ Model failed 3 times, fallback to train_model")
-            action = Action(command="train_model", target_column=None)
+            print(f"  🧠 Model unavailable (or failed) — using HEURISTIC fallback logic")
+            action = get_heuristic_action(obs)
 
         obs, reward, done, info = env.step(action)
         trajectory.append({"action": action.model_dump(), "reward": reward.value, "info": info})

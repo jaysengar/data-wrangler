@@ -27,24 +27,25 @@ from env import DataWranglerEnv
 from models import Action
 from tasks import grader_easy, grader_medium, grader_hard
 
-# ─── Validate required env vars ────────────────────────────────────────────────
+# ─── Configuration & Client ────────────────────────────────────────────────────
 API_BASE_URL = os.environ.get("API_BASE_URL")
-MODEL_NAME   = os.environ.get("MODEL_NAME")
-HF_TOKEN     = os.environ.get("HF_TOKEN")
+MODEL_NAME = os.environ.get("MODEL_NAME")
+HF_TOKEN = os.environ.get("HF_TOKEN")
 
-missing = [name for name, val in [
-    ("API_BASE_URL", API_BASE_URL),
-    ("MODEL_NAME",   MODEL_NAME),
-    ("HF_TOKEN",     HF_TOKEN)
-] if not val]
+# Detect placeholder token
+IS_PLACEHOLDER = HF_TOKEN == "" or not HF_TOKEN
 
-if missing:
-    print(f"[ERROR] Missing required environment variables: {missing}")
-    print("  → Fill them in your .env file and re-run.")
-    sys.exit(1)
+if IS_PLACEHOLDER:
+    print("\n" + "!"*60)
+    print("  ⚠️ WARNING: HF_TOKEN is not configured in your .env file!")
+    print("  The DataWrangler agent will switch to Heuristic Mode.")
+    print("  To use the LLM, please add your HuggingFace READ token.")
+    print("!"*60 + "\n")
 
-# ─── OpenAI Client ─────────────────────────────────────────────────────────────
-client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+client = OpenAI(
+    api_key=HF_TOKEN if not IS_PLACEHOLDER else "unused",
+    base_url=API_BASE_URL,
+)
 
 # ─── Task Definitions ──────────────────────────────────────────────────────────
 TASKS = {
@@ -119,6 +120,36 @@ def extract_json(text: str) -> dict:
     raise ValueError(f"Could not extract JSON from LLM response: {text[:300]}")
 
 
+def get_heuristic_action(obs) -> Action:
+    """Fallback logic: selects the best cleaning action based on dataset state."""
+    cols = obs.columns
+    threshold = int(obs.total_rows * 0.9)
+
+    # 1. Drop columns with mostly missing values
+    for col, info in cols.items():
+        if info.get("missing_values", 0) >= threshold:
+            return Action(command="drop_column", target_column=col)
+
+    # 2. Fill missing values (Prioritize Median for outliers)
+    for col, info in cols.items():
+        missing = info.get("missing_values", 0)
+        if missing > 0:
+            if info.get("type") == "numeric":
+                if info.get("has_outliers"):
+                    return Action(command="fill_median", target_column=col)
+                return Action(command="fill_mean", target_column=col)
+            else:
+                return Action(command="fill_mode", target_column=col)
+
+    # 3. Clip outliers
+    for col, info in cols.items():
+        if info.get("type") == "numeric" and info.get("has_outliers"):
+            return Action(command="clip_outliers", target_column=col)
+
+    # 4. Default to training
+    return Action(command="train_model", target_column=None)
+
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 def is_ready_to_train(obs) -> bool:
     """Local check — no LLM call needed if dataset is already clean."""
@@ -187,6 +218,9 @@ Respond with ONLY this JSON format:
         action = None
         for attempt in range(3):
             try:
+                if IS_PLACEHOLDER:
+                    raise ValueError("HF_TOKEN is a placeholder — skipping LLM call.")
+
                 response = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=[{"role": "user", "content": prompt}],
@@ -255,11 +289,14 @@ Respond with ONLY this JSON format:
                     time.sleep(2)
                 else:
                     print(f"  ⚠️ LLM error ({type(e).__name__}). Retrying... (Attempt {attempt+1}/3)")
+                    # Show more detail for first error
+                    if attempt == 0:
+                        print(f"     Details: {str(e)[:100]}...")
                     time.sleep(1)
         
         if action is None:
-            print("  ❌ Model failed 3 times, fallback to train_model.")
-            action = Action(command="train_model", target_column=None)
+            print("  🧠 Model unavailable (or failed) — using HEURISTIC fallback logic")
+            action = get_heuristic_action(obs)
 
         obs, reward, done, info = env.step(action)
         trajectory.append({"action": action.model_dump(), "reward": reward.value, "info": info})

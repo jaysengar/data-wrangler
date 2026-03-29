@@ -10,9 +10,6 @@ class Observation(BaseModel):
             "Column info dict. Each column has: "
             "type ('numeric'/'categorical'/'datetime'), "
             "original_dtype ('int'/'float'/'categorical'/'datetime'), "
-            "missing_values (int), "
-            "unique_count (int), "
-            "has_outliers (bool)"
         )
     )
     current_accuracy: float = Field(..., description="Current ML model accuracy (0.0 to 1.0)")
