@@ -175,6 +175,7 @@ def run_agent(env, max_steps: int = 15) -> list:
             action = Action(command="train_model", target_column=None)
             obs, reward, done, info = env.step(action)
             trajectory.append({"action": action.model_dump(), "reward": reward.value, "info": info})
+            print(f"[STEP] step={env.step_count} reward={reward.value:.4f}", flush=True)
             icon = "✅" if reward.value > 0 else "❌"
             print(f"  {icon} train_model(None) | reward={reward.value:+.2f} | acc={info['accuracy']:.2f}")
             break
@@ -300,6 +301,7 @@ Respond with ONLY this JSON format:
 
         obs, reward, done, info = env.step(action)
         trajectory.append({"action": action.model_dump(), "reward": reward.value, "info": info})
+        print(f"[STEP] step={env.step_count} reward={reward.value:.4f}", flush=True)
         icon = "✅" if reward.value > 0 else "❌"
         print(f"  {icon} {action.command}({action.target_column}) | reward={reward.value:+.2f} | acc={info['accuracy']:.2f} | {reward.reason[:60]}")
 
@@ -307,6 +309,7 @@ Respond with ONLY this JSON format:
 
 
 def run_task(task_id: str) -> float:
+    print(f"[START] task={task_id}", flush=True)
     task = TASKS[task_id]
     print(f"\n{'═'*60}")
     print(f"  TASK: {task_id.upper()}  —  {task['description']}")
@@ -315,6 +318,7 @@ def run_task(task_id: str) -> float:
     env.reset()
     trajectory = run_agent(env)
     score = task["grader"](trajectory)
+    print(f"[END] task={task_id} score={score:.4f} steps={env.step_count}", flush=True)
     return score
 
 
