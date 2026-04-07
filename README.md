@@ -59,6 +59,7 @@ docker run -p 7860:7860 \
 | POST | `/upload` | Upload a custom CSV/XLSX dataset |
 | GET | `/download` | Download the cleaned dataset |
 | GET | `/baseline` | Run the AI baseline agent on all tasks |
+| GET | `/inference` | Run the official AI agent inference on all tasks |
 
 ## 🎯 Tasks
 

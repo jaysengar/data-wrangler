@@ -35,12 +35,7 @@ HF_TOKEN = os.environ.get("HF_TOKEN")
 # Detect placeholder token
 IS_PLACEHOLDER = HF_TOKEN == "" or not HF_TOKEN
 
-if IS_PLACEHOLDER:
-    print("\n" + "!"*60)
-    print("  ⚠️ WARNING: HF_TOKEN is not configured in your .env file!")
-    print("  The DataWrangler agent will switch to Heuristic Mode.")
-    print("  To use the LLM, please add your HuggingFace READ token.")
-    print("!"*60 + "\n")
+# (Warning moved to inside main)
 
 client = OpenAI(
     api_key=HF_TOKEN if not IS_PLACEHOLDER else "unused",
@@ -171,13 +166,12 @@ def run_agent(env, max_steps: int = 15) -> list:
 
         # ── Smart shortcut: if already clean, train without calling LLM ──────
         if is_ready_to_train(obs):
-            print("  🧠 Dataset is clean — calling train_model directly (no LLM needed)")
+            print("Dataset is clean — calling train_model directly", file=sys.stderr)
             action = Action(command="train_model", target_column=None)
             obs, reward, done, info = env.step(action)
             trajectory.append({"action": action.model_dump(), "reward": reward.value, "info": info})
             print(f"[STEP] step={env.step_count} reward={reward.value:.4f}", flush=True)
-            icon = "✅" if reward.value > 0 else "❌"
-            print(f"  {icon} train_model(None) | reward={reward.value:+.2f} | acc={info['accuracy']:.2f}")
+            print(f"train_model(None) | reward={reward.value:+.2f} | acc={info['accuracy']:.2f}", file=sys.stderr)
             break
 
         history = [
@@ -281,29 +275,28 @@ Respond with ONLY this JSON format:
                     cmd = "train_model"
 
                 action = Action(command=cmd, target_column=target)
-                print(f"  🤖 [{env.step_count+1}] {decision.get('reasoning', '')[:80]}")
+                print(f"[{env.step_count+1}] {decision.get('reasoning', '')[:80]}", file=sys.stderr)
                 break # Success
             except Exception as e:
                 err_str = str(e)
                 if "429" in err_str:
-                    print(f"  ⚠️ Rate limit hit. Waiting 2s... (Attempt {attempt+1}/3)")
+                    print(f"Rate limit hit. Waiting 2s... (Attempt {attempt+1}/3)", file=sys.stderr)
                     time.sleep(2)
                 else:
-                    print(f"  ⚠️ LLM error ({type(e).__name__}). Retrying... (Attempt {attempt+1}/3)")
+                    print(f"LLM error ({type(e).__name__}). Retrying... (Attempt {attempt+1}/3)", file=sys.stderr)
                     # Show more detail for first error
                     if attempt == 0:
-                        print(f"     Details: {str(e)[:100]}...")
+                        print(f"Details: {str(e)[:100]}...", file=sys.stderr)
                     time.sleep(1)
-        
+
         if action is None:
-            print("  🧠 Model unavailable (or failed) — using HEURISTIC fallback logic")
+            print("Model unavailable (or failed) — using HEURISTIC fallback logic", file=sys.stderr)
             action = get_heuristic_action(obs)
 
         obs, reward, done, info = env.step(action)
         trajectory.append({"action": action.model_dump(), "reward": reward.value, "info": info})
         print(f"[STEP] step={env.step_count} reward={reward.value:.4f}", flush=True)
-        icon = "✅" if reward.value > 0 else "❌"
-        print(f"  {icon} {action.command}({action.target_column}) | reward={reward.value:+.2f} | acc={info['accuracy']:.2f} | {reward.reason[:60]}")
+        print(f"{action.command}({action.target_column}) | reward={reward.value:+.2f} | acc={info['accuracy']:.2f}", file=sys.stderr)
 
     return trajectory
 
@@ -311,9 +304,6 @@ Respond with ONLY this JSON format:
 def run_task(task_id: str) -> float:
     print(f"[START] task={task_id}", flush=True)
     task = TASKS[task_id]
-    print(f"\n{'═'*60}")
-    print(f"  TASK: {task_id.upper()}  —  {task['description']}")
-    print(f"{'═'*60}")
     env = DataWranglerEnv(task["state"])
     env.reset()
     trajectory = run_agent(env)
@@ -323,32 +313,32 @@ def run_task(task_id: str) -> float:
 
 
 # ─── Main ──────────────────────────────────────────────────────────────────────
-def main():
-    print("\n" + "═"*60)
-    print("  DataWrangler — Official Inference Script")
-    print(f"  Model   : {MODEL_NAME}")
-    print(f"  Base URL: {API_BASE_URL}")
-    print("═"*60)
+def run_all_tasks():
+    """Run the agent on all predefined tasks and return the results."""
+    if IS_PLACEHOLDER:
+        print("WARNING: HF_TOKEN is not configured. Heuristic Mode active.", file=sys.stderr)
 
-    all_scores = {}
+    results = {
+        "model": MODEL_NAME,
+        "api_base": API_BASE_URL,
+        "tasks": {}
+    }
+    
     for task_id in TASKS:
         score = run_task(task_id)
-        all_scores[task_id] = score
-        print(f"\n  ★  Score [{task_id}] = {score:.4f}")
+        results["tasks"][task_id] = score
+    
+    return results
 
-    print("\n" + "═"*60)
-    print("  FINAL SCORES SUMMARY")
-    print("═"*60)
-    all_valid = True
-    for task_id, score in all_scores.items():
-        in_range = 0.0 <= score <= 1.0
-        status = "✅" if in_range else "❌ OUT OF RANGE"
-        if not in_range:
-            all_valid = False
-        print(f"  {task_id:<10}: {score:.4f}  {status}")
-    print("═"*60)
-    print(f"  Overall: {'✅ All scores valid!' if all_valid else '❌ Some scores out of range!'}")
-    print("  Inference complete.")
+
+# ─── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    results = run_all_tasks()
+    
+    print("\nFinal Scores Summary:", file=sys.stderr)
+    for task_id, score in results["tasks"].items():
+        print(f"  {task_id:<10}: {score:.4f}", file=sys.stderr)
+    print("Inference complete.", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

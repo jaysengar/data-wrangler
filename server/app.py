@@ -160,6 +160,31 @@ def run_baseline_endpoint():
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}\n\nTraceback:\n{tb}")
 
 
+# ─── Inference (Logic from inference.py) ──────────────────────────────────────
+@app.get("/inference")
+def run_inference_endpoint():
+    """Runs the full agent inference loop on all benchmark tasks."""
+    try:
+        # Import inference from root (requires root in PYTHONPATH)
+        import sys
+        import os
+        # Ensure root is in sys.path
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if root_dir not in sys.path:
+            sys.path.append(root_dir)
+            
+        import inference
+        results = inference.run_all_tasks()
+        return {
+            "status": "success",
+            "results": results
+        }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"Inference Error: {str(e)}\n\n{tb}")
+
+
 def main():
     import uvicorn
     uvicorn.run("server.app:app", host="0.0.0.0", port=7860, reload=False)
